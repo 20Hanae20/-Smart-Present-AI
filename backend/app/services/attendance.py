@@ -66,7 +66,8 @@ class AttendanceService:
         AttendanceService._update_student_stats(db, student_id, session_id, payload.status)
         
         # ⭐ N8N INTEGRATION: Log absence for email notification workflow
-        if payload.status == "absent":
+        # Only if marked via manual/auto_confirmation (when trainer confirms session)
+        if payload.status == "absent" and payload.marked_via in ["auto_confirmation", "manual"]:
             AttendanceService._log_absence_for_n8n(db, student_id, session_id)
         
         return record

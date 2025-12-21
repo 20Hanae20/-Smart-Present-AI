@@ -577,8 +577,11 @@ def confirm_session_attendance(
     # Create absence records for all students in the class who don't have attendance records
     from app.models.student import Student
     from app.models.attendance import AttendanceRecord
+    from app.services.attendance import AttendanceService
     
     class_name = session.class_name
+    absent_students = []  # Track for N8N logging
+    
     if class_name:
         # Get all students in the class
         all_students = db.query(Student).filter(Student.class_name == class_name).all()
@@ -599,6 +602,17 @@ def confirm_session_attendance(
                     marked_via="auto_confirmation"
                 )
                 db.add(absent_record)
+                absent_students.append(student.id)
+                
+                # Update student stats for each absent student
+                AttendanceService._update_student_stats(db, student.id, session_id, "absent")
+    
+    # Commit attendance records first
+    db.commit()
+    
+    # ⭐ N8N INTEGRATION: Log absences for email workflow (after session confirmation)
+    for student_id in absent_students:
+        AttendanceService._log_absence_for_n8n(db, student_id, session_id)
     
     # Send notification to admins
     from app.services.notification import NotificationService

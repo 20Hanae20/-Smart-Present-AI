@@ -26,11 +26,14 @@ SmartPresence Backend → Database Tables → N8N (Schedule Trigger) → Emails/
 | created_at | DateTime | Record creation timestamp |
 
 **Flow:**
-1. Trainer marks student absent in SmartPresence
-2. Backend creates record in `absence` table with `notified=FALSE`
-3. N8N scheduled workflow queries `WHERE notified=FALSE`
-4. N8N sends email to parent
-5. N8N updates `notified=TRUE`
+1. Trainer confirms session attendance in SmartPresence
+2. System auto-marks all non-checked-in students as "absent"
+3. Backend creates records in `absence` table with `notified=FALSE`
+4. N8N scheduled workflow queries `WHERE notified=FALSE`
+5. N8N sends email to parent
+6. N8N updates `notified=TRUE`
+
+**Important:** Absences are finalized when the trainer clicks "Confirm Attendance" for the session. At this point, any student who didn't check in (via facial recognition, QR code, or manual marking) is automatically marked absent.
 
 ---
 
