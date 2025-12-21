@@ -33,6 +33,8 @@ type StudentStats = {
   total_absence_hours?: number;
   total_late_minutes?: number;
   alert_level?: 'none' | 'warning' | 'critical' | 'failing';
+  ai_score?: number;  // AI attendance score from N8N (0-100)
+  ai_explanation?: string;  // AI explanation from N8N
 };
 
 type AttendanceRecord = {
@@ -249,6 +251,47 @@ export default function StudentPage() {
               )}
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* AI Attendance Score Card (if available from N8N) */}
+        {stats?.ai_score !== null && stats?.ai_score !== undefined && (
+          <div className="mb-4 rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20 p-6">
+            <div className="flex items-start gap-4">
+              <div className="rounded-full bg-purple-500/20 p-3">
+                <TrendingUp className="h-6 w-6 text-purple-300" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-white">Score d'Assiduité IA</h3>
+                  <span className={`text-3xl font-bold ${
+                    stats.ai_score >= 80 ? 'text-emerald-400' :
+                    stats.ai_score >= 60 ? 'text-amber-400' :
+                    'text-red-400'
+                  }`}>
+                    {stats.ai_score}/100
+                  </span>
+                </div>
+                {stats.ai_explanation && (
+                  <p className="text-sm text-purple-200 leading-relaxed">
+                    {stats.ai_explanation}
+                  </p>
+                )}
+                <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      stats.ai_score >= 80 ? 'bg-emerald-500' :
+                      stats.ai_score >= 60 ? 'bg-amber-500' :
+                      'bg-red-500'
+                    }`}
+                    style={{ width: `${stats.ai_score}%` }}
+                  />
+                </div>
+                <p className="text-xs text-purple-300/70 mt-2">
+                  Calculé automatiquement par IA basé sur vos absences et présences
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="grid gap-4 md:grid-cols-4 mb-6">

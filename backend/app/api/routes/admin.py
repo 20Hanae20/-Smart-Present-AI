@@ -27,6 +27,8 @@ class StudentResponse(BaseModel):
     class_name: str
     facial_data_encoded: bool
     attendance_rate: float
+    pourcentage: Optional[int] = None  # AI attendance score (0-100)
+    justification: Optional[str] = None  # AI explanation
 
     class Config:
         from_attributes = True

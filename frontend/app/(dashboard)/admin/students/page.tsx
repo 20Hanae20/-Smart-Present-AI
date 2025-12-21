@@ -47,6 +47,8 @@ type Student = {
   student_code: string;
   class_name?: string;
   facial_data_encoded?: boolean;
+  pourcentage?: number;  // AI attendance score (0-100)
+  justification?: string;  // AI explanation
 };
 
 export default function AdminStudentsPage() {
@@ -220,6 +222,39 @@ export default function AdminStudentsPage() {
           {row.original.facial_data_encoded ? 'Enrôlé' : 'Manquant'}
         </span>
       ),
+    },
+    {
+      header: 'Score IA',
+      cell: ({ row }) => {
+        const score = row.original.pourcentage;
+        if (score === null || score === undefined) {
+          return <span className="text-xs text-zinc-500">—</span>;
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className={`font-semibold ${
+                score >= 80 ? 'text-emerald-400' :
+                score >= 60 ? 'text-amber-400' :
+                'text-red-400'
+              }`}
+            >
+              {score}
+            </span>
+            {row.original.justification && (
+              <button
+                onClick={() => {
+                  alert(`Explication IA:\n\n${row.original.justification}`);
+                }}
+                className="rounded p-1 hover:bg-purple-900/30 text-purple-400 hover:text-purple-300"
+                title="Voir l'explication IA"
+              >
+                <Sparkles className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: 'Actions',

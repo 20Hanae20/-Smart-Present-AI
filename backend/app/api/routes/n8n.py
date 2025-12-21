@@ -3,6 +3,7 @@ N8N Integration API Routes
 Handles file uploads and data exchange with N8N workflows
 """
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 import os
 from datetime import datetime
@@ -120,3 +121,30 @@ async def get_recent_pdfs(
         }
         for pdf in pdfs
     ]
+
+
+@router.get("/pdfs/download/{pdf_id}")
+async def download_pdf(
+    pdf_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Download PDF file by ID.
+    
+    Returns the actual PDF file for browser download.
+    """
+    pdf = db.query(PDFAbsence).filter(PDFAbsence.id == pdf_id).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found")
+    
+    if not os.path.exists(pdf.pdf_path):
+        raise HTTPException(status_code=404, detail="PDF file not found on disk")
+    
+    filename = f"absences_{pdf.class_name}_{pdf.date}.pdf"
+    
+    return FileResponse(
+        pdf.pdf_path,
+        media_type="application/pdf",
+        filename=filename
+    )

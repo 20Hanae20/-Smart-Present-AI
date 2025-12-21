@@ -81,6 +81,8 @@ def get_student_stats(
         "total_absence_hours": student.total_absence_hours or 0,
         "total_late_minutes": student.total_late_minutes or 0,
         "alert_level": student.alert_level or "none",
+        "ai_score": student.pourcentage,  # AI attendance score from N8N Workflow 4
+        "ai_explanation": student.justification,  # AI explanation from N8N
     }
 
 

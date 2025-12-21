@@ -106,6 +106,7 @@ export default function RoleNavBar() {
               { href: '/admin/import', label: 'Import' },
               { href: '/admin/notifications', label: 'Notifications' },
               { href: '/admin/analytics', label: 'Analytique' },
+              { href: '/admin/reports', label: 'Rapports PDF' },
             ].map((l) => {
               const isActive = pathname === l.href || pathname.startsWith(l.href + '/');
               return (
