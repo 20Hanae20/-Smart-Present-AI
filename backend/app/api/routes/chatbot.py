@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -8,6 +9,7 @@ from app.schemas.chatbot import (
     ChatbotMessageOut,
 )
 from app.services.chatbot import ChatbotService
+from app.ai_agent.core import agent_run_streaming  # EXACT NTIC2: direct function import
 from app.utils.deps import get_current_user, get_db
 
 router = APIRouter(tags=["chatbot"])
@@ -94,7 +96,96 @@ def ask_quick(
     q = question or (payload.question if payload else None)
     if not q:
         raise HTTPException(status_code=422, detail="Field 'question' is required")
-    response_text = ChatbotService.generate_response(q)
+    
+    # Build user context
+    user_context = {
+        "role": current_user.role,
+        "user_id": current_user.id,
+    }
+    
+    # Generate response using new AI Agent
+    response_data = ChatbotService.generate_response(q, user_context, db)
     intent = ChatbotService.detect_intent(q)
+    
     # For frontend compatibility, return 'response' key
-    return {"question": q, "response": response_text, "intent": intent}
+    return {
+        "question": q,
+        "response": response_data.get("reply", ""),
+        "intent": intent,
+        "sources": response_data.get("sources", []),
+        "rag_used": response_data.get("rag_used", False),
+    }
+
+
+@router.post("/ask/stream")
+def ask_streaming(
+    payload: ChatbotAskIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Streaming ask endpoint for real-time responses (EXACT NTIC2 approach).
+    Returns Server-Sent Events (SSE) stream.
+    """
+    if not payload or not payload.question:
+        raise HTTPException(status_code=422, detail="Field 'question' is required")
+    
+    def generate():
+        """SSE generator function - EXACT NTIC2 streaming pattern."""
+        import json
+        try:
+            # EXACT NTIC2: Direct function call with streaming
+            for chunk in agent_run_streaming(
+                message=payload.question,
+                user_id=current_user.id,
+                db_session=db
+            ):
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+)
+@router.get("/status")
+def get_chatbot_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get chatbot and RAG pipeline status (EXACT NTIC2 approach)."""
+    import chromadb
+    from app.ai_agent.rag_pipeline import get_chromadb_path
+    
+    try:
+        # EXACT NTIC2: Direct ChromaDB check
+        client = chromadb.PersistentClient(path=get_chromadb_path())
+        
+        try:
+            collection = client.get_collection(name="smartpresence_knowledge")
+            doc_count = collection.count()
+            initialized = True
+        except Exception:
+            doc_count = 0
+            initialized = False
+        
+        return {
+            "status": "ok",
+            "rag_initialized": initialized,
+            "knowledge_documents": doc_count,
+            "streaming_available": True,
+            "chroma_path": get_chromadb_path()
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "rag_initialized": False,
+            "knowledge_documents": 0,
+            "streaming_available": True,
+            "error": str(e)
+        }

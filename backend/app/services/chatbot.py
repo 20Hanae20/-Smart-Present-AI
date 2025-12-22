@@ -1,16 +1,25 @@
 import json
 from datetime import datetime
+from typing import Optional, Dict, Any, Iterator
 
 from sqlalchemy.orm import Session
 
 from app.models.chatbot import ChatbotConversation, ChatbotMessage
 from app.services.gemini_service import GeminiService
+from app.ai_agent.core import agent_run_streaming  # EXACT NTIC2: function-based approach
+from app.ai_agent.memory import load_context  # EXACT NTIC2: conversation history
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ChatbotService:
-    """Service layer for chatbot."""
+    """
+    Enhanced service layer for chatbot with AI Agent integration.
+    Supports both legacy FAQ fallback and advanced RAG-powered responses.
+    """
 
-    # Simple FAQ knowledge base
+    # Simple FAQ knowledge base (fallback only)
     FAQ = {
         "horaires": {
             "keywords": ["horaire", "heure", "temps", "quand", "timing", "schedule"],
@@ -65,7 +74,7 @@ class ChatbotService:
 
     @staticmethod
     def send_message(db: Session, conversation_id: int, user_message: str, user_id: int = None) -> ChatbotMessage:
-        """Process user message and return assistant response."""
+        """Process user message and return assistant response using AI Agent."""
         conversation = (
             db.query(ChatbotConversation).filter(ChatbotConversation.id == conversation_id).first()
         )
@@ -80,15 +89,24 @@ class ChatbotService:
         )
         db.add(user_msg)
 
-        # Build user context for Gemini
+        # Build user context for AI Agent
         user_context = {
             "role": conversation.user_type,
             "user_id": user_id or conversation.user_id,
         }
 
-        # Generate assistant response with Gemini
-        response_text = ChatbotService.generate_response(user_message, user_context)
+        # Generate assistant response with AI Agent
+        response_data = ChatbotService.generate_response(user_message, user_context, db, conversation_id)
+        response_text = response_data.get("reply", "Je n'ai pas pu générer une réponse.")
         intent = ChatbotService.detect_intent(user_message)
+
+        # Store sources in metadata
+        sources = response_data.get("sources", [])
+        entities_extracted = {
+            "rag_used": response_data.get("rag_used", False),
+            "sources": sources,
+            "language": response_data.get("language", "fr")
+        }
 
         assistant_msg = ChatbotMessage(
             conversation_id=conversation_id,
@@ -96,6 +114,7 @@ class ChatbotService:
             content=response_text,
             intent_detected=intent,
             confidence_score=0.85,
+            entities_extracted=entities_extracted,
         )
         db.add(assistant_msg)
 
@@ -108,22 +127,82 @@ class ChatbotService:
         return assistant_msg
 
     @staticmethod
-    def generate_response(user_message: str, user_context: dict = None) -> str:
-        """Generate chatbot response using Gemini AI with application context."""
+    def generate_response(
+        user_message: str, 
+        user_context: Optional[Dict[str, Any]] = None,
+        db: Optional[Session] = None,
+        conversation_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate chatbot response using AI Agent (EXACT NTIC2 approach).
+        Falls back to Gemini, then FAQ if AI Agent fails.
+        """
         try:
-            # Try to use Gemini AI first
+            # Get user_id from context
+            user_id = user_context.get("user_id", 1) if user_context else 1
+            
+            # EXACT NTIC2: Direct function call with only message and user_id
+            # agent_run_streaming handles RAG, multi-provider LLM, and caching internally
+            response_generator = agent_run_streaming(
+                message=user_message,
+                user_id=str(user_id)  # NTIC2 expects string user_id
+            )
+            
+            # Collect response from generator (NTIC2 yields JSON strings)
+            full_response = ""
+            sources = []
+            for chunk_str in response_generator:
+                try:
+                    # Parse JSON string (EXACT NTIC2 format)
+                    chunk = json.loads(chunk_str) if isinstance(chunk_str, str) else chunk_str
+                    # NTIC2 uses "type": "content" not "token"
+                    if chunk.get("type") == "content":
+                        full_response += chunk.get("content", "")
+                    elif chunk.get("type") == "sources":
+                        sources = chunk.get("sources", [])
+                except (json.JSONDecodeError, AttributeError):
+                    # If not JSON, treat as raw text token
+                    full_response += str(chunk_str)
+            
+            if full_response:
+                return {
+                    "reply": full_response,
+                    "sources": sources,
+                    "rag_used": len(sources) > 0,
+                    "language": "fr",
+                    "provider": "ai_agent"
+                }
+            
+            logger.warning("AI Agent returned empty response, falling back")
+            
+        except Exception as e:
+            logger.error(f"AI Agent error: {e}", exc_info=True)
+        
+        # Fallback 1: Try Gemini (legacy)
+        try:
             gemini_service = GeminiService()
-            response = gemini_service.generate_response(user_message, user_context)
-
-            if response and not response.startswith("Error"):
-                return response
-
-            # Fallback to FAQ-based response if Gemini fails
-            return ChatbotService._generate_faq_response(user_message)
-
-        except Exception:
-            # Fallback to FAQ if Gemini service fails
-            return ChatbotService._generate_faq_response(user_message)
+            response_text = gemini_service.generate_response(user_message, user_context)
+            
+            if response_text and not response_text.startswith("Error"):
+                return {
+                    "reply": response_text,
+                    "sources": [],
+                    "rag_used": False,
+                    "language": "fr",
+                    "provider": "gemini"
+                }
+        except Exception as e:
+            logger.error(f"Gemini fallback error: {e}")
+        
+        # Fallback 2: FAQ-based response (last resort)
+        faq_response = ChatbotService._generate_faq_response(user_message)
+        return {
+            "reply": faq_response,
+            "sources": [],
+            "rag_used": False,
+            "language": "fr",
+            "provider": "faq"
+        }
 
     @staticmethod
     def _generate_faq_response(user_message: str) -> str:
@@ -187,3 +266,33 @@ class ChatbotService:
             db.commit()
             db.refresh(conversation)
         return conversation
+
+    @staticmethod
+    def generate_response_streaming(
+        user_message: str,
+        user_context: Optional[Dict[str, Any]] = None,
+        db: Optional[Session] = None,
+        conversation_id: Optional[int] = None
+    ) -> Iterator[str]:
+        """
+        Generate streaming response using AI Agent.
+        Yields JSON chunks for real-time updates.
+        """
+        try:
+            agent = AgentCore(db=db)
+            user_id = user_context.get("user_id", 1) if user_context else 1
+            
+            for chunk in agent.generate_response_streaming(
+                message=user_message,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                user_context=user_context
+            ):
+                yield chunk
+                
+        except Exception as e:
+            logger.error(f"Streaming error: {e}", exc_info=True)
+            yield json.dumps({
+                "type": "error",
+                "message": f"Erreur de streaming: {str(e)}"
+            })

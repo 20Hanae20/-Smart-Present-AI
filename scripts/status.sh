@@ -90,6 +90,7 @@ check_port_mapping frontend 3000 "Frontend"
 check_port_mapping backend 8000 "Backend API"
 check_port_mapping postgres 5432 "PostgreSQL"
 check_port_mapping redis 6379 "Redis"
+check_port_mapping gotenberg 3000 "Gotenberg (PDF)"
 
 echo ""
 
@@ -100,6 +101,7 @@ FRONTEND_OK=0
 BACKEND_OK=0
 POSTGRES_OK=0
 REDIS_OK=0
+GOTENBERG_OK=0
 
 # Frontend
 echo -n "   Frontend (3000): "
@@ -145,45 +147,51 @@ else
   log_warn "   → Check: docker-compose logs redis"
 fi
 
+# Gotenberg (PDF service for N8N)
+echo -n "   Gotenberg (3001): "
+if curl -s -m 2 "http://localhost:3001/health" > /dev/null 2>&1; then
+  log_success "PDF service ready"
+  GOTENBERG_OK=1
+else
+  log_error "Not responding"
+  log_warn "   → Check: docker-compose logs gotenberg"
+fi
+
 echo ""
 
 # System diagnostics
 echo -e "${YELLOW}📊 System Diagnostics:${NC}"
-
-# Disk usage (robust)
-if docker system df --format '{{.Type}}: {{.Size}} (reclaimable {{.Reclaimable}})' >/dev/null 2>&1; then
-  echo "   Docker Disk Usage:"
-  docker system df --format '     - {{.Type}}: {{.Size}} (reclaimable {{.Reclaimable}})'
-else
-  echo "   Docker Disk Usage:"
-  docker system df 2>/dev/null | sed -n '1,6p' | sed 's/^/     /'
-fi
-
 # Container count
 RUNNING=0
-for svc in postgres redis backend frontend; do
+for svc in postgres redis backend frontend gotenberg; do
   cid=$(${COMPOSE_CMD[@]} ps -q "$svc" 2>/dev/null | head -n 1)
   if [ -n "$cid" ] && docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null | grep -q true; then
     RUNNING=$((RUNNING + 1))
   fi
 done
-echo "   Running Containers: $RUNNING/4"
+echo "   Running Containers: $RUNNING/5"
 
 # Overall status
 echo ""
-if [ "$RUNNING" -ne 4 ]; then
+if [ "$RUNNING" -ne 5 ]; then
   if [ "$RUNNING" -gt 0 ]; then
-    log_warn "Partial startup - $((4 - RUNNING)) service(s) missing"
+    log_warn "Partial startup - $((5 - RUNNING)) service(s) missing"
   else
     log_error "No services running"
     echo "   Run: ./scripts/start.sh"
   fi
-elif [ "$FRONTEND_OK" -eq 1 ] && [ "$BACKEND_OK" -eq 1 ] && [ "$POSTGRES_OK" -eq 1 ] && [ "$REDIS_OK" -eq 1 ]; then
+elif [ "$FRONTEND_OK" -eq 1 ] && [ "$BACKEND_OK" -eq 1 ] && [ "$POSTGRES_OK" -eq 1 ] && [ "$REDIS_OK" -eq 1 ] && [ "$GOTENBERG_OK" -eq 1 ]; then
   log_success "All services online"
 else
   log_warn "Containers up, but one or more health checks failed"
 fi
 
+echo ""
+echo -e "${BLUE}📚 Quick Links:${NC}"
+echo "   Frontend:   http://localhost:3000"
+echo "   Backend:    http://localhost:8000"
+echo "   API Docs:   http://localhost:8000/docs"
+echo "   Gotenberg:  http://localhost:3001/health (PDF service)"
 echo ""
 echo -e "${BLUE}📚 Quick Links:${NC}"
 echo "   Frontend:   http://localhost:3000"

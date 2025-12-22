@@ -1,0 +1,16 @@
+
+flask
+psycopg2-binary
+openai
+langchain
+chromadb
+python-dotenv
+beautifulsoup4
+requests
+PyPDF2
+pdfplumber
+openpyxl
+pandas
+Pillow
+pytesseract
+sentence-transformers

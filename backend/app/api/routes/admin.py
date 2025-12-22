@@ -145,6 +145,8 @@ def list_students(
                 class_name=s.class_name,
                 facial_data_encoded=s.facial_data_encoded,
                 attendance_rate=s.attendance_rate,
+                pourcentage=s.pourcentage,
+                justification=s.justification,
             )
             for s in students
         ]

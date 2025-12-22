@@ -56,6 +56,7 @@ export default function AdminStudentsPage() {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<{ student: string; score: number; text: string } | null>(null);
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -227,9 +228,12 @@ export default function AdminStudentsPage() {
       header: 'Score IA',
       cell: ({ row }) => {
         const score = row.original.pourcentage;
+        const justification = row.original.justification;
+        
         if (score === null || score === undefined) {
           return <span className="text-xs text-zinc-500">—</span>;
         }
+        
         return (
           <div className="flex items-center gap-2">
             <span
@@ -241,13 +245,19 @@ export default function AdminStudentsPage() {
             >
               {score}
             </span>
-            {row.original.justification && (
+            {justification && (
               <button
-                onClick={() => {
-                  alert(`Explication IA:\n\n${row.original.justification}`);
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAiExplanation({
+                    student: row.original.name,
+                    score: score,
+                    text: justification
+                  });
                 }}
-                className="rounded p-1 hover:bg-purple-900/30 text-purple-400 hover:text-purple-300"
+                className="rounded p-1 hover:bg-purple-900/30 text-purple-400 hover:text-purple-300 transition-colors"
                 title="Voir l'explication IA"
+                type="button"
               >
                 <Sparkles className="h-3 w-3" />
               </button>
@@ -454,6 +464,55 @@ export default function AdminStudentsPage() {
           onSubmit={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
         />
+
+        {/* AI Explanation Modal */}
+        {aiExplanation && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setAiExplanation(null)}
+          >
+            <div 
+              className="relative max-w-2xl w-full mx-4 bg-gradient-to-br from-purple-950/90 via-zinc-900/95 to-black border border-purple-500/30 rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="border-b border-purple-500/20 p-6">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-purple-500/20 p-3">
+                    <Sparkles className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">
+                      Explication IA - {aiExplanation.student}
+                    </h3>
+                    <p className="text-sm text-purple-300">
+                      Score d'assiduité: {aiExplanation.score}/100
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-6">
+                  <p className="text-zinc-200 leading-relaxed whitespace-pre-wrap">
+                    {aiExplanation.text}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-purple-500/20 p-4 flex justify-end">
+                <button
+                  onClick={() => setAiExplanation(null)}
+                  className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </RoleGuard>
   );

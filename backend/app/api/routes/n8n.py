@@ -2,16 +2,95 @@
 N8N Integration API Routes
 Handles file uploads and data exchange with N8N workflows
 """
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 import os
 from datetime import datetime
+from typing import Optional
 
 from app.utils.deps import get_db
 from app.models.absence import PDFAbsence
+from app.utils.cache import redis_cache
+from app.services.ai_scoring_service import update_student_scores
 
 router = APIRouter()
+
+
+@router.post("/calculate-scores")
+async def calculate_ai_scores(
+    class_name: Optional[str] = Query(None, description="Filter by class (e.g., DSI2)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Calculate AI attendance scores for students based on REAL attendance data.
+    
+    This endpoint should be called by N8N Workflow 4 to:
+    1. Query actual attendance records from database
+    2. Calculate dynamic scores (0-100) based on presences/absences
+    3. Generate AI justification text in French
+    4. Update students table with new scores
+    5. Invalidate cache for immediate frontend update
+    
+    Args:
+        class_name: Optional filter to calculate only for specific class
+    
+    Returns:
+        {
+            "status": "success",
+            "updated": 15,
+            "class": "DSI2" or "all"
+        }
+    """
+    try:
+        # Calculate and update scores
+        updated_count = update_student_scores(class_name, db)
+        
+        # Clear cache so frontend shows updated scores immediately
+        if redis_cache and redis_cache.available():
+            redis_cache.invalidate(prefix="students:")
+        
+        return {
+            "status": "success",
+            "updated": updated_count,
+            "class": class_name or "all",
+            "message": f"Successfully calculated AI scores for {updated_count} student(s)"
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error calculating scores: {str(e)}"
+        )
+
+
+@router.post("/cache/invalidate")
+async def invalidate_cache(payload: dict = None):
+    """
+    Invalidate Redis cache after N8N updates data.
+    
+    N8N should call this endpoint after:
+    - Workflow 4: Updating student AI scores
+    - Workflow 5: Uploading new PDFs
+    
+    This ensures frontend gets fresh data immediately.
+    """
+    if redis_cache and redis_cache.available():
+        # Clear all student-related cache
+        redis_cache.invalidate(prefix="students:")
+        # Clear PDF cache if needed
+        redis_cache.invalidate(prefix="pdfs:")
+        
+        return {
+            "status": "success",
+            "message": "Cache invalidated successfully",
+            "cleared": ["students", "pdfs"]
+        }
+    
+    return {
+        "status": "success",
+        "message": "Cache not enabled, no action needed"
+    }
 
 
 @router.post("/upload")
@@ -61,39 +140,17 @@ async def upload_pdf_from_n8n(
     db.add(pdf_record)
     db.commit()
     
+    # Invalidate cache so frontend gets fresh data immediately
+    if redis_cache and redis_cache.available():
+        redis_cache.invalidate(prefix="pdfs:")
+    
     return {
         "status": "success",
         "filename": file.filename,
         "path": file_path,
         "class": class_name,
-        "date": date_str
-    }
-
-
-@router.get("/pdfs/{class_name}/{date}")
-async def get_daily_pdf(
-    class_name: str,
-    date: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Get PDF path for a specific class and date.
-    
-    Used by admin dashboard to download daily absence reports.
-    """
-    pdf = db.query(PDFAbsence).filter(
-        PDFAbsence.class_name == class_name,
-        PDFAbsence.date == date
-    ).first()
-    
-    if not pdf:
-        raise HTTPException(status_code=404, detail="PDF not found for this date")
-    
-    return {
-        "class": pdf.class_name,
-        "date": pdf.date,
-        "pdf_path": pdf.pdf_path,
-        "created_at": pdf.created_at
+        "date": date_str,
+        "cache_cleared": True
     }
 
 
@@ -148,3 +205,30 @@ async def download_pdf(
         media_type="application/pdf",
         filename=filename
     )
+
+
+@router.get("/pdfs/{class_name}/{date}")
+async def get_daily_pdf(
+    class_name: str,
+    date: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get PDF path for a specific class and date.
+    
+    Used by admin dashboard to download daily absence reports.
+    """
+    pdf = db.query(PDFAbsence).filter(
+        PDFAbsence.class_name == class_name,
+        PDFAbsence.date == date
+    ).first()
+    
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found for this date")
+    
+    return {
+        "class": pdf.class_name,
+        "date": pdf.date,
+        "pdf_path": pdf.pdf_path,
+        "created_at": pdf.created_at
+    }

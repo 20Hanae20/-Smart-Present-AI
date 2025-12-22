@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ntic2
+      POSTGRES_USER: ntic
+      POSTGRES_PASSWORD: ntic
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Ollama pour LLM local gratuit (optionnel - peut être désactivé si vous utilisez Groq/HuggingFace)
+  # Si vous avez Ollama installé localement, commentez cette section et utilisez OLLAMA_BASE_URL=http://host.docker.internal:11434
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11435:11434"  # Port externe changé à 11435 pour éviter les conflits avec Ollama local
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    # Commenter cette section si vous n'utilisez pas Ollama dans Docker
+    # profiles:
+    #   - ollama
+
+  backend:
+    build: ./backend
+    env_file: .env
+    depends_on: 
+      - postgres
+      - ollama
+    volumes:
+      - ./backend:/app
+      - chroma_data:/app/chroma_db
+    ports: [ "5000:5000" ]
+    secrets:
+      - openai_api_key
+    environment:
+      # Configurer le provider LLM (ollama, groq, huggingface, openai)
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - HF_API_KEY=${HF_API_KEY:-}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  frontend:
+    build: ./frontend
+    depends_on: [ backend ]
+    ports: [ "8080:80" ]
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    depends_on: [ backend ]
+    ports: [ "5173:5173" ]
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+volumes:
+  pgdata:
+  ollama_data:
+  chroma_data:
+
+
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key
