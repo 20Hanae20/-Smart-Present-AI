@@ -860,7 +860,7 @@ def ingest_website(update_only=False, resume_from_backup=False):
     logger.info("Début de l'ingestion du site web...")
     
     try:
-        from app.ai_agent.rag_pipeline import get_chromadb_path
+        from app.rag.pipeline import get_chromadb_path
         chroma_db_path = get_chromadb_path()
     except:
         if os.path.exists("/app"): chroma_db_path = "/app/chroma_db"
@@ -920,7 +920,7 @@ def ingest_website(update_only=False, resume_from_backup=False):
         
     # Fichier de sauvegarde
     try:
-        from app.ai_agent.rag_pipeline import get_chromadb_path
+        from app.rag.pipeline import get_chromadb_path
         chroma_db_path = get_chromadb_path()
     except:
         pass  # chroma_db_path déjà défini plus haut
@@ -1209,7 +1209,7 @@ def ingest_website(update_only=False, resume_from_backup=False):
             logger.info("   Option 1 (Recommandé): Reprendre depuis la sauvegarde")
             logger.info("   ──────────────────────────────────────────────────────")
             logger.info("   Une fois le quota OpenAI restauré, exécutez:")
-            logger.info("   docker-compose exec backend python -c \"from app.ai_agent.ingest import ingest_website; ingest_website(resume_from_backup=True)\"")
+            logger.info("   docker-compose exec backend python -c \"from app.rag.ingest import ingest_website; ingest_website(resume_from_backup=True)\"")
             logger.info("")
             logger.info("   Option 2: Installer sentence-transformers (évite les quotas)")
             logger.info("   ──────────────────────────────────────────────────────")
