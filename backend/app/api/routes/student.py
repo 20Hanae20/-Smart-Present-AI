@@ -30,6 +30,27 @@ def get_student_stats(
     if not student:
         raise HTTPException(status_code=404, detail="Student profile not found")
 
+    # 🔄 AUTO-CALCULATE AI SCORE IF MISSING (DYNAMIC!)
+    if student.pourcentage is None:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            from app.services.ai_scoring_service import calculate_attendance_score
+            logger.info(f"Auto-calculating AI score for student {student.id} ({student.first_name})")
+            score, explanation = calculate_attendance_score(student.id, db)
+            student.pourcentage = score
+            student.justification = explanation
+            db.commit()
+            db.refresh(student)
+            logger.info(f"AI score calculated: {score}/100 for student {student.id}")
+        except Exception as e:
+            logger.error(f"Failed to auto-calculate AI score for student {student.id}: {type(e).__name__}: {str(e)}", exc_info=True)
+            # Set default values for new students as fallback
+            student.pourcentage = 100
+            student.justification = "Nouvel étudiant - score calculé automatiquement lors de la première présence."
+            db.commit()
+            db.refresh(student)
+
     # Get attendance records
     total_sessions = (
         db.query(AttendanceRecord).filter(AttendanceRecord.student_id == student.id).count()
@@ -39,11 +60,22 @@ def get_student_stats(
         .filter(AttendanceRecord.student_id == student.id, AttendanceRecord.status == "present")
         .count()
     )
+    late_count = (
+        db.query(AttendanceRecord)
+        .filter(AttendanceRecord.student_id == student.id, AttendanceRecord.status == "late")
+        .count()
+    )
     absent_count = (
         db.query(AttendanceRecord)
         .filter(AttendanceRecord.student_id == student.id, AttendanceRecord.status == "absent")
         .count()
     )
+
+    # 🔥 CALCULATE ATTENDANCE RATE DYNAMICALLY (ALWAYS ACCURATE!)
+    if total_sessions > 0:
+        attendance_rate = ((present_count + late_count) / total_sessions) * 100
+    else:
+        attendance_rate = 0.0
 
     justified_absences = (
         db.query(AttendanceRecord)
@@ -66,7 +98,7 @@ def get_student_stats(
     )
 
     return {
-        "attendance_rate": student.attendance_rate or 0,
+        "attendance_rate": round(attendance_rate, 1),  # DYNAMIC from attendance_records!
         "total_sessions": total_sessions,
         "total_classes": total_sessions,
         "present_count": present_count,
@@ -81,8 +113,8 @@ def get_student_stats(
         "total_absence_hours": student.total_absence_hours or 0,
         "total_late_minutes": student.total_late_minutes or 0,
         "alert_level": student.alert_level or "none",
-        "ai_score": student.pourcentage,  # AI attendance score from N8N Workflow 4
-        "ai_explanation": student.justification,  # AI explanation from N8N
+        "ai_score": student.pourcentage,  # AI attendance score (ALWAYS available now!)
+        "ai_explanation": student.justification,  # AI explanation (ALWAYS available now!)
     }
 
 

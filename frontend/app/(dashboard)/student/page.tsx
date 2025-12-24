@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import RoleGuard from '@/components/auth/RoleGuard';
 import Breadcrumbs from '@/components/ui/Breadcrumbs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useEffect } from 'react';
+import { useAuth } from '@/lib/auth-context';
 import OnboardingWalkthrough from '@/components/common/OnboardingWalkthrough';
 import { getWebSocketManager } from '@/lib/websocket';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -56,48 +58,62 @@ type UpcomingSession = {
 
 export default function StudentPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  // 🔄 REMOVED AUTO-CALCULATION - Backend handles this automatically now
 
   useEffect(() => {
     const ws = getWebSocketManager();
     ws.connect();
+    const userKey = user?.id ?? 'anon';
     const unsubStats = ws.subscribe('student_stats_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['student-stats', userKey] });
     });
     const unsubAttend = ws.subscribe('student_attendance_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['student-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['student-attendance', userKey] });
     });
     const unsubSessions = ws.subscribe('student_sessions_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['student-upcoming-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['student-upcoming-sessions', userKey] });
     });
     return () => {
       unsubStats();
       unsubAttend();
       unsubSessions();
     };
-  }, [queryClient]);
+  }, [queryClient, user]);
 
-  const { data: stats } = useQuery({
-    queryKey: ['student-stats'],
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['student-stats', user?.id],
     queryFn: async () => {
       return apiClient<StudentStats>('/api/student/stats', { method: 'GET', useCache: false });
     },
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 15000, // 15s freshness window per user
+    cacheTime: 120000, // keep cache briefly per user
   });
 
   const { data: attendance } = useQuery({
-    queryKey: ['student-attendance'],
+    queryKey: ['student-attendance', user?.id],
     queryFn: async () => {
       return apiClient<AttendanceRecord[]>('/api/student/attendance?limit=50', {
         method: 'GET',
         useCache: false,
       });
     },
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 15000,
+    cacheTime: 120000,
   });
 
   const { data: upcomingSessions } = useQuery({
-    queryKey: ['student-upcoming-sessions'],
-    staleTime: 0,
+    queryKey: ['student-upcoming-sessions', user?.id],
+    staleTime: 15000,
+    cacheTime: 120000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    enabled: !!user,
     queryFn: async () => {
       return apiClient<UpcomingSession[]>('/api/student/upcoming-sessions?limit=10', {
         method: 'GET',
@@ -165,25 +181,28 @@ export default function StudentPage() {
     {
       icon: TrendingUp,
       label: 'Taux de présence',
-      value: `${(stats?.attendance_rate ?? 0).toFixed(1)}%`,
-      color: 'bg-emerald-600/20 text-emerald-300',
+      value: statsLoading ? '...' : `${(stats?.attendance_rate ?? 0).toFixed(1)}%`,
+      color: (stats?.attendance_rate ?? 0) >= 80 ? 'bg-emerald-600/20 text-emerald-300' : 
+             (stats?.attendance_rate ?? 0) >= 60 ? 'bg-amber-600/20 text-amber-300' : 
+             (stats?.attendance_rate ?? 0) === 0 && (stats?.total_sessions ?? 0) === 0 ? 'bg-blue-600/20 text-blue-300' :
+             'bg-red-600/20 text-red-300',
     },
     {
       icon: BookOpen,
       label: 'Classes',
-      value: stats?.total_classes ?? stats?.total_sessions ?? 0,
+      value: statsLoading ? '...' : (stats?.total_classes ?? stats?.total_sessions ?? 0),
       color: 'bg-blue-600/20 text-blue-300',
     },
     {
       icon: Clock,
       label: 'Heures d\'absence',
-      value: `${stats?.total_absence_hours ?? 0}h`,
+      value: statsLoading ? '...' : `${stats?.total_absence_hours ?? 0}h`,
       color: 'bg-red-600/20 text-red-300',
     },
     {
       icon: AlertCircle,
       label: 'Absences',
-      value: stats?.absences ?? stats?.absent_count ?? 0,
+      value: statsLoading ? '...' : (stats?.absences ?? stats?.absent_count ?? 0),
       color: 'bg-amber-600/20 text-amber-300',
     },
   ];
@@ -253,8 +272,8 @@ export default function StudentPage() {
           </Alert>
         )}
 
-        {/* AI Attendance Score Card (if available from N8N) */}
-        {stats?.ai_score !== null && stats?.ai_score !== undefined && (
+        {/* 🎯 AI ATTENDANCE SCORE CARD - ALWAYS SHOW (100% DYNAMIC) */}
+        {stats && (
           <div className="mb-4 rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20 p-6">
             <div className="flex items-start gap-4">
               <div className="rounded-full bg-purple-500/20 p-3">
@@ -263,32 +282,57 @@ export default function StudentPage() {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold text-white">Score d'Assiduité IA</h3>
-                  <span className={`text-3xl font-bold ${
-                    stats.ai_score >= 80 ? 'text-emerald-400' :
-                    stats.ai_score >= 60 ? 'text-amber-400' :
-                    'text-red-400'
-                  }`}>
-                    {stats.ai_score}/100
-                  </span>
+                  {statsLoading ? (
+                    <div className="h-10 w-24 bg-white/10 animate-pulse rounded" />
+                  ) : (
+                    <span className={`text-3xl font-bold ${
+                      (stats.ai_score || 0) >= 80 ? 'text-emerald-400' :
+                      (stats.ai_score || 0) >= 60 ? 'text-amber-400' :
+                      (stats.ai_score || 0) === 0 && stats.total_sessions === 0 ? 'text-blue-400' :
+                      'text-red-400'
+                    }`}>
+                      {stats.ai_score !== null && stats.ai_score !== undefined ? Math.round(stats.ai_score) : '—'}/100
+                    </span>
+                  )}
                 </div>
-                {stats.ai_explanation && (
-                  <p className="text-sm text-purple-200 leading-relaxed">
+                {/* Dynamic explanation based on state */}
+                {stats.ai_explanation ? (
+                  <p className="text-sm text-purple-200 leading-relaxed mb-3">
                     {stats.ai_explanation}
                   </p>
+                ) : stats.total_sessions === 0 ? (
+                  <p className="text-sm text-purple-200 leading-relaxed mb-3">
+                    ✨ <strong>Nouveau étudiant</strong> — Votre score sera calculé automatiquement dès votre première présence enregistrée.
+                  </p>
+                ) : (
+                  <p className="text-sm text-purple-200/70 leading-relaxed mb-3">
+                    Votre score est calculé en temps réel en fonction de vos présences et absences.
+                  </p>
                 )}
-                <div className="mt-3 h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      stats.ai_score >= 80 ? 'bg-emerald-500' :
-                      stats.ai_score >= 60 ? 'bg-amber-500' :
-                      'bg-red-500'
-                    }`}
-                    style={{ width: `${stats.ai_score}%` }}
-                  />
+                {/* 📊 DYNAMIC PROGRESS BAR - Always visible */}
+                <div className="mt-3 h-3 w-full rounded-full bg-white/10 overflow-hidden relative">
+                  {statsLoading ? (
+                    <div className="h-full w-full bg-white/20 animate-pulse" />
+                  ) : (
+                    <div
+                      className={`h-full transition-all duration-1000 ease-out ${
+                        (stats.ai_score || 0) >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                        (stats.ai_score || 0) >= 60 ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
+                        (stats.ai_score || 0) === 0 && stats.total_sessions === 0 ? 'bg-gradient-to-r from-blue-500 to-blue-400' :
+                        'bg-gradient-to-r from-red-500 to-red-400'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(2, stats.ai_score || 0))}%` }}
+                    />
+                  )}
                 </div>
-                <p className="text-xs text-purple-300/70 mt-2">
-                  Calculé automatiquement par IA basé sur vos absences et présences
-                </p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-purple-300/70">
+                    {stats.total_sessions === 0 ? 'En attente de données' : 'Mis à jour automatiquement'}
+                  </p>
+                  <p className="text-xs font-medium text-purple-300">
+                    {stats.ai_score !== null && stats.ai_score !== undefined ? `${stats.ai_score.toFixed(1)}%` : 'N/A'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

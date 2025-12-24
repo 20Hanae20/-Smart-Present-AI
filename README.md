@@ -48,7 +48,6 @@ Helper scripts (repo root):
 - Session requests/approvals, QR and facial check-in
 - Real-time notifications/chat (websocket)
 - Exports (PDF/CSV), analytics, and fraud review
-- **N8N Integration:** Automated parent emails, exam reminders, WhatsApp alerts, AI attendance scoring, daily PDF reports
 
 ## Structure
 ```
@@ -57,16 +56,6 @@ frontend/  # Next.js app (App Router, components, pages)
 docs/      # Project and deployment docs
 scripts/   # Helper scripts for docker, seeds, admin, migrations
 ```
-
-## N8N Automation Setup
-SmartPresence integrates with N8N for automated notifications and reporting:
-- **Workflow 1:** Email parents when student is absent
-- **Workflow 2:** Remind students 72h before exams
-- **Workflow 3:** WhatsApp alerts when >8h cumulative absences
-- **Workflow 4:** AI-powered attendance scoring with explanations
-- **Workflow 5:** Daily PDF absence reports by class
-
-**Setup Guide:** See `N8N_SETUP_GUIDE.md` (quick start) or `docs/N8N_INTEGRATION.md` (detailed)
 
 ## Development (local, optional)
 Backend:
