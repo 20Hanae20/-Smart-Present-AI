@@ -19,7 +19,7 @@ export default function RoleNavBar() {
 
   const links = [
     { href: '/', label: 'Accueil', icon: Home, roles: ['admin', 'trainer', 'student'] },
-    { href: '/assistant', label: 'Assistant', icon: Bot, roles: ['admin', 'trainer', 'student'] },
+    { href: '/assistant', label: 'Assistant NTIC2', icon: Bot, roles: ['admin', 'trainer', 'student'] },
     { href: '/admin', label: 'Admin', icon: Users, roles: ['admin'] },
     { href: '/trainer', label: 'Formateur', icon: UserCheck, roles: ['trainer'] },
     { href: '/student', label: 'Étudiant', icon: GraduationCap, roles: ['student'] },

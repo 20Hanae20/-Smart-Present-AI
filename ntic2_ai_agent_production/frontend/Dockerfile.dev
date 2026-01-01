@@ -1,0 +1,15 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Install dependencies including dev deps so vite is available
+COPY package*.json ./
+RUN npm install --include=dev
+
+# Copy app sources
+COPY . .
+
+# Bind to all interfaces so Docker can expose the port
+ENV HOST=0.0.0.0
+EXPOSE 5173
+
+CMD ["npm", "run", "dev"]

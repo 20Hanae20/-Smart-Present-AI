@@ -64,6 +64,23 @@ def _compute_blur_and_brightness(img_bgr: np.ndarray) -> tuple[float, float]:
     return blur_score, brightness
 
 
+def warm_up_face_engine() -> bool:
+    """Ensure the InsightFace engine is loaded and ready.
+
+    This preloads the model and runs a tiny no-op inference on a blank image
+    to allocate internal buffers. Subsequent requests are faster.
+    Returns True if the engine is ready.
+    """
+    try:
+        app = _get_face_app()
+        # Run a minimal forward pass to warm caches/graphs
+        dummy = np.zeros((320, 320, 3), dtype=np.uint8)
+        _ = app.get(dummy)
+        return True
+    except Exception:
+        return False
+
+
 def extract_embedding_with_quality(
     image_bytes: bytes,
     *,

@@ -64,14 +64,14 @@ export default function CommandPalette() {
     const role = user?.role;
     const items: CommandItem[] = [];
 
-    // Common
+    // NTIC2 assistant entry
     items.push({
       id: 'nav-assistant',
-      label: 'Assistant IA',
+      label: 'Assistant NTIC2',
       icon: <MessageSquare className="h-4 w-4" />,
       action: () => router.push('/assistant'),
-      keywords: ['assistant', 'chatbot', 'ai', 'help'],
-      category: 'Outils',
+      keywords: ['assistant', 'chatbot', 'ai', 'help', 'ntic2'],
+      category: 'Navigation',
     });
 
     if (role === 'admin') {

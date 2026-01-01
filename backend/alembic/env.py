@@ -20,7 +20,6 @@ from app.models import (
     attendance,
     notification,
     notification_preferences,
-    chatbot,
     facial_embedding,
     admin_message,
     smart_attendance,

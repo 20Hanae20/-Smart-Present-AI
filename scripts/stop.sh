@@ -56,26 +56,41 @@ fi
 
 echo ""
 
-# Ask about volume cleanup
-read -p "Remove volumes and data? (y/N) " -n 1 -r CLEANUP
+echo "Cleanup options:"
+echo "  [n] None (default)"
+echo "  [c] Chroma only (vector store reset)"
+echo "  [a] All volumes (DB, Redis, uploads, Chroma)"
+read -p "Choose cleanup option [n/c/a]: " -n 1 -r CHOICE
 echo ""
 
-if [[ $CLEANUP =~ ^[Yy]$ ]]; then
-  log_info "Removing volumes..."
-  
-  # Get list of volumes before removal
-  VOLUMES=$("${COMPOSE_CMD[@]}" config --volumes 2>/dev/null | tail -n +2 | wc -l)
-  
-  if "${COMPOSE_CMD[@]}" down -v 2>/dev/null; then
-    log_success "Volumes removed ($VOLUMES volumes cleaned)"
-    log_warning "Database data has been deleted"
-  else
-    log_error "Failed to remove volumes"
-    exit 1
-  fi
-else
-  log_info "Keeping volumes and data for next startup"
-fi
+case "$CHOICE" in
+  c|C)
+    log_info "Removing Chroma vector volumes..."
+    # Best-effort removal of Chroma volumes for both main and ntic2
+    VOLS=$(docker volume ls --format '{{.Name}}' | grep -E '_chroma_data$' || true)
+    if [ -n "$VOLS" ]; then
+      echo "$VOLS" | xargs -r docker volume rm >/dev/null 2>&1 || true
+      log_success "Chroma volumes removed"
+      log_warning "Knowledge base will be reseeded on next start"
+    else
+      log_info "No Chroma volumes found"
+    fi
+    ;;
+  a|A)
+    log_info "Removing ALL compose volumes..."
+    VOLUMES=$("${COMPOSE_CMD[@]}" config --volumes 2>/dev/null | tail -n +2 | wc -l)
+    if "${COMPOSE_CMD[@]}" down -v 2>/dev/null; then
+      log_success "Volumes removed ($VOLUMES volumes cleaned)"
+      log_warning "Database and uploads have been deleted"
+    else
+      log_error "Failed to remove volumes"
+      exit 1
+    fi
+    ;;
+  *)
+    log_info "Keeping volumes and data for next startup"
+    ;;
+esac
 
 echo ""
 log_success "SmartPresence shutdown complete!"

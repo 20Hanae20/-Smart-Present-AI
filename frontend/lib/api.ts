@@ -317,11 +317,7 @@ class ApiClient {
     return response.data;
   }
 
-  // Chatbot endpoints
-  async askChatbot(question: string): Promise<string> {
-    const response = await this.client.post<{ response: string }>('/chatbot/ask', { question });
-    return response.data.response;
-  }
+  // Chatbot endpoints removed
 }
 
 export const api = new ApiClient();

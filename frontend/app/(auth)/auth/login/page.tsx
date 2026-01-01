@@ -58,6 +58,13 @@ export default function LoginPage() {
         return;
       }
 
+      // Prewarm the backend face engine to avoid cold-start latency
+      try {
+        await apiClient('/api/auth/login/facial/prewarm', { method: 'GET' });
+      } catch {
+        // Non-blocking: continue even if prewarm fails
+      }
+
       const waitForVideoReady = async (video: HTMLVideoElement, timeoutMs: number) => {
         if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return true;
         await Promise.race([
@@ -148,7 +155,8 @@ export default function LoginPage() {
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       
-      const b64 = canvas.toDataURL('image/jpeg', 0.9);
+      // Encode at lower quality to reduce payload and speed up upload
+      const b64 = canvas.toDataURL('image/jpeg', 0.7);
       if (b64 && b64.length > 100) {
         setPhoto(b64);
         setError(null);
@@ -174,24 +182,50 @@ export default function LoginPage() {
         if (!photo) {
           throw new Error('Veuillez capturer votre visage.');
         }
-        const data = await apiClient<any>('/api/auth/login/facial', {
-          method: 'POST',
-          data: {
-            email,
-            image_base64: photo,
-            confidence_threshold: 0.62,
-          },
-        });
+        // First attempt: default threshold
+        const attempt = async (thr: number) =>
+          apiClient<any>('/api/auth/login/facial', {
+            method: 'POST',
+            data: {
+              email,
+              image_base64: photo,
+              confidence_threshold: thr,
+            },
+          });
+
+        let data = await attempt(0.62);
+        if (!data?.access_token) {
+          // If face not recognized, retry once with slightly lower threshold
+          // to compensate for webcam variance.
+          try {
+            data = await attempt(0.58);
+          } catch (retryErr: any) {
+            const detail = retryErr?.response?.data?.detail;
+            if (detail && typeof detail === 'string') {
+              setError(detail === 'Face not recognized'
+                ? "Visage non reconnu. Réessayez en vous rapprochant et avec un bon éclairage."
+                : detail);
+            } else {
+              setError(retryErr?.message ?? 'Erreur connexion');
+            }
+            throw retryErr;
+          }
+        }
         if (data?.access_token) {
           await loginWithToken(String(data.access_token));
           return;
         }
-
         throw new Error('Login failed');
       }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      setError(detail || (err?.message ?? 'Erreur connexion'));
+      // Map 401s to clearer messages when detail is missing
+      const status = err?.response?.status;
+      if (!detail && status === 401) {
+        setError('Non autorisé: visage non reconnu ou utilisateur introuvable.');
+      } else {
+        setError(detail || (err?.message ?? 'Erreur connexion'));
+      }
     } finally {
       setLoading(false);
     }

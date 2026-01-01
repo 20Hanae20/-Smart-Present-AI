@@ -16,6 +16,7 @@ from app.schemas.auth import (
 )
 from app.services import auth as auth_service
 from app.services.facial import enroll_user_faces, verify_user_face_by_image
+from app.services.face_engine import warm_up_face_engine
 from app.utils.deps import get_db
 from app.utils.rate_limit import hit
 
@@ -219,6 +220,15 @@ def login_facial(payload: FacialLoginRequest, request: Request, db: Session = De
 
     token = auth_service.create_access_token(subject=str(matched_user_id))
     return token
+
+
+@router.get("/login/facial/prewarm", response_model=dict)
+def login_facial_prewarm():
+    """Preload the face engine to reduce first-request latency."""
+    ready = warm_up_face_engine()
+    if not ready:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to prewarm face engine")
+    return {"status": "ready"}
 
 
 @router.post("/enroll", response_model=dict)

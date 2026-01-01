@@ -70,7 +70,14 @@ fi
 check_port_available() {
   local port=$1
   local service=$2
-  if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+  local in_use=0
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 && in_use=1 || true
+  fi
+  if command -v ss >/dev/null 2>&1; then
+    ss -lnt 2>/dev/null | awk '{print $4}' | grep -E "(:|\\.)$port$" >/dev/null 2>&1 && in_use=1 || true
+  fi
+  if [ "$in_use" -eq 1 ]; then
     log_warning "Port $port already in use (needed by $service)"
     return 1
   fi
@@ -82,6 +89,65 @@ check_port_available 3000 "Frontend" || PORTS_CONFLICT=1
 check_port_available 8000 "Backend" || PORTS_CONFLICT=1
 check_port_available 5432 "Database" || PORTS_CONFLICT=1
 check_port_available 6380 "Redis" || PORTS_CONFLICT=1
+check_port_available 3001 "Gotenberg" || PORTS_CONFLICT=1
+
+# Dynamically assign ntic2 Ollama host port (write to .env)
+ensure_env_var() {
+  local key="$1"; shift
+  local val="$1"; shift || true
+  touch .env
+  local tmp
+  tmp=$(mktemp)
+  # Remove any existing entries for key, then append fresh value
+  grep -v -E "^${key}=" .env > "$tmp" || true
+  printf "%s=%s\n" "$key" "$val" >> "$tmp"
+  mv "$tmp" .env
+  export ${key}="${val}"
+}
+
+find_free_port() {
+  local base="$1"; local max="${2:-10}"; local p
+  for ((i=0;i<=max;i++)); do
+    p=$((base+i))
+    if check_port_available "$p" "probe" > /dev/null 2>&1; then echo "$p"; return 0; fi
+  done
+  echo ""; return 1
+}
+
+NTIC2_OLLAMA_PORT_CURRENT=${NTIC2_OLLAMA_PORT:-}
+if [ -z "${NTIC2_OLLAMA_PORT_CURRENT}" ]; then
+  NTIC2_OLLAMA_PORT_CURRENT=$(find_free_port 11435 15 || true)
+  if [ -z "$NTIC2_OLLAMA_PORT_CURRENT" ]; then
+    log_warning "No free port found for ntic2 Ollama in 11435-11450; ntic2 will be skipped."
+    SKIP_NTIC2=1
+  else
+    log_info "Using ntic2 Ollama port ${NTIC2_OLLAMA_PORT_CURRENT}"
+    ensure_env_var NTIC2_OLLAMA_PORT "$NTIC2_OLLAMA_PORT_CURRENT"
+    ensure_env_var NTIC2_OLLAMA_MAPPING "${NTIC2_OLLAMA_PORT_CURRENT}:11434"
+    SKIP_NTIC2=0
+  fi
+else
+  # If provided, ensure it's free or bump to a free one
+  if ! check_port_available "$NTIC2_OLLAMA_PORT_CURRENT" "Ollama (ntic2)"; then
+    local_new=$(find_free_port 11435 15 || true)
+    if [ -n "$local_new" ]; then
+      log_warning "Port ${NTIC2_OLLAMA_PORT_CURRENT} busy; switching ntic2 Ollama to ${local_new}"
+      NTIC2_OLLAMA_PORT_CURRENT="$local_new"
+      ensure_env_var NTIC2_OLLAMA_PORT "$NTIC2_OLLAMA_PORT_CURRENT"
+      ensure_env_var NTIC2_OLLAMA_MAPPING "${NTIC2_OLLAMA_PORT_CURRENT}:11434"
+      SKIP_NTIC2=0
+    else
+      log_warning "No free port found for ntic2 Ollama; ntic2 will be skipped."
+      SKIP_NTIC2=1
+    fi
+  else
+    ensure_env_var NTIC2_OLLAMA_PORT "$NTIC2_OLLAMA_PORT_CURRENT"
+    ensure_env_var NTIC2_OLLAMA_MAPPING "${NTIC2_OLLAMA_PORT_CURRENT}:11434"
+    SKIP_NTIC2=0
+  fi
+fi
+check_port_available 5000 "NTIC2 Backend" || true
+check_port_available 8080 "NTIC2 Frontend" || true
 
 if [ $PORTS_CONFLICT -eq 1 ]; then
   log_warning "Some ports are already in use"
@@ -97,10 +163,26 @@ fi
 # Start services
 echo ""
 log_info "Starting services with Docker Compose..."
-if ! "${COMPOSE_CMD[@]}" up -d 2>&1; then
-  log_error "Failed to start Docker services"
-  log_info "Try: docker system prune -af"
-  exit 1
+# Remove any stale containers with conflicting names (rare but can happen)
+for cname in ntic2_frontend ntic2_backend ntic2_ollama; do
+  if docker ps -a --format '{{.Names}}' | grep -qx "$cname"; then
+    log_warning "Removing stale container $cname"
+    docker rm -f "$cname" >/dev/null 2>&1 || true
+  fi
+done
+if [ "${SKIP_NTIC2:-0}" -eq 1 ]; then
+  SERVICES=(postgres redis backend frontend gotenberg)
+  if ! "${COMPOSE_CMD[@]}" up -d "${SERVICES[@]}" 2>&1; then
+    log_error "Failed to start Docker services"
+    log_info "Try: docker system prune -af"
+    exit 1
+  fi
+else
+  if ! "${COMPOSE_CMD[@]}" up -d 2>&1; then
+    log_error "Failed to start Docker services"
+    log_info "Try: docker system prune -af"
+    exit 1
+  fi
 fi
 
 log_success "Docker services started"
@@ -128,6 +210,36 @@ done
 if [ $ELAPSED -ge $HEALTH_CHECK_TIMEOUT ]; then
   log_warning "Services took longer than expected to start"
   log_info "Run './scripts/status.sh' to debug"
+fi
+
+# Ensure vector DB seeded (idempotent)
+echo ""
+log_info "Checking SmartPresence knowledge base (ChromaDB) ..."
+SEED_STATE=$("${COMPOSE_CMD[@]}" exec -T backend sh -lc '
+  python - <<PY
+import chromadb
+import os
+path = "/app/chroma_db"
+client = chromadb.PersistentClient(path=path)
+try:
+    col = client.get_collection("website_content")
+    cnt = col.count()
+    print("OK" if cnt > 0 else "EMPTY")
+except Exception:
+    print("EMPTY")
+PY
+')
+
+if [ "$SEED_STATE" = "EMPTY" ]; then
+  log_warning "Vector store empty → running fast seed"
+  if "${COMPOSE_CMD[@]}" exec -T backend sh -lc 'python /app/seed_simple.py' >/dev/null 2>&1; then
+    log_success "Seed completed (smart + site facts)."
+  else
+    log_warning "Seed script failed; you can retry with:"
+    echo "   ${COMPOSE_CMD[*]} exec backend sh -lc 'python /app/seed_simple.py'"
+  fi
+else
+  log_success "Knowledge base ready"
 fi
 
 # Success summary

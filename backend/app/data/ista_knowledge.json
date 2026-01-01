@@ -1,0 +1,279 @@
+{
+  "institution": {
+    "name": "ISTA NTIC SM Casablanca",
+    "website": "https://sites.google.com/view/ista-ntic-sm/",
+    "email": "istanticsm@gmail.com",
+    "rules": {
+      "mandatory_clothing": "Le port de la blouse et du badge est obligatoire au sein de l'établissement."
+    },
+    "hours": {
+      "friday_afternoon": {
+        "entry": "14:15",
+        "portal_closure": "14:30"
+      }
+    }
+  },
+  "employment_prospects": {
+    "description": "Débouchés professionnels après la formation :",
+    "filières": {
+      "Full Stack (FS)": {
+        "jobs": ["Développeur Full Stack", "Développeur Mobile", "Développeur Front-end / Back-end"],
+        "groups": ["NTIC2-FS201", "NTIC2-FS202", "NTIC2-FS203", "NTIC2-FS204", "NTIC2-FS205", "NTIC2-FS206", "NTIC2-FS207"]
+      },
+      "Développement Digital (DEV)": {
+        "jobs": ["Développeur Web", "Développeur Applications", "Analyste Programmeur"],
+        "groups": ["NTIC2-DEV101", "NTIC2-DEV102", "NTIC2-DEV103", "NTIC2-DEV104", "NTIC2-DEV105", "NTIC2-DEV106"]
+      },
+      "Infrastructure Digitale": {
+        "jobs": ["Administrateur Systèmes et Réseaux", "Technicien Support IT", "Spécialiste Cloud"],
+        "groups": ["NTIC2-ID101"]
+      },
+      "Gestion Entreprise": {
+        "jobs": ["Assistant Gestionnaire", "Comptable", "Responsable RH"],
+        "groups": ["NTIC2-GE101"]
+      }
+    }
+  },
+  "emplois_du_temps": {
+    "FS": {
+      "NTIC2-FS201": {
+        "lundi": [
+          { "heure": "08h30-10h30", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" },
+          { "heure": "10h30-13h00", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" },
+          { "heure": "13h30-16H00", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "16h00-18h30", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "SP6" }
+        ],
+        "mardi": [
+          { "heure": "08h30-10h30", "module": "Prise de parole", "professeur": "EL JAZOULI", "salle": "Salle Réunion" },
+          { "heure": "10h30-13h00", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "13h30-16H00", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "16h00-18h30", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "TEAM" }
+        ],
+        "mercredi": [
+          { "heure": "08h30-10h30", "module": "Préparer un projet web", "professeur": "EL HAKIKI", "salle": "TEAM" },
+          { "heure": "10h30-13h00", "module": "Gestion Données", "professeur": "FKAIRAT", "salle": "SP2" },
+          { "heure": "13h30-16H00", "module": "Gestion Données", "professeur": "FKAIRAT", "salle": "SP2" },
+          { "heure": "16h00-18h30", "module": "Gestion Données", "professeur": "FKAIRAT", "salle": "SP2" }
+        ]
+      },
+      "NTIC2-FS202": {
+        "lundi": [
+          { "heure": "08h30-10h30", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" },
+          { "heure": "10h30-13h00", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" },
+          { "heure": "13h30-16H00", "module": "Développement front-end", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "16h00-18h30", "module": "Développement front-end", "professeur": "EL HAKIKI", "salle": "SP6" }
+        ],
+        "mardi": [
+          { "heure": "08h30-10h30", "module": "WORKSHOP IA", "professeur": "NACHITE", "salle": "AMPHI" },
+          { "heure": "10h30-13h00", "module": "Gestion Données", "professeur": "NACHITE", "salle": "SC6" },
+          { "heure": "13h30-16H00", "module": "Gestion Données", "professeur": "NACHITE", "salle": "SC6" },
+          { "heure": "16h00-18h30", "module": "ANGLAIS", "professeur": "JALAL", "salle": "LABO2" }
+        ],
+        "mercredi": [
+          { "heure": "08h30-10h30", "module": "ANGLAIS", "professeur": "JALAL", "salle": "LABO2" },
+          { "heure": "10h30-13h00", "module": "Culture et techniques avancées du numérique", "professeur": "TITOUICH", "salle": "SP4" },
+          { "heure": "13h30-16H00", "module": "Culture et techniques avancées du numérique", "professeur": "TITOUICH", "salle": "SP4" },
+          { "heure": "16h00-18h30", "module": "Création d'une application Cloud native", "professeur": "JANAH", "salle": "SP4" }
+        ],
+        "jeudi": [
+          { "heure": "08h30-10h30", "module": "Création d'une application Cloud native", "professeur": "JANAH", "salle": "SP4" }
+        ]
+      },
+      "NTIC2-FS203": {
+        "lundi": [
+          { "heure": "08h30-10h30", "module": "Gestion Données", "professeur": "KODDAM", "salle": "SC5" },
+          { "heure": "10h30-13h00", "module": "Gestion Données", "professeur": "KODDAM", "salle": "SC5" },
+          { "heure": "13h30-16H00", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" },
+          { "heure": "16h00-18h30", "module": "Français", "professeur": "DAOUDI", "salle": "TEAM" }
+        ],
+        "mardi": [
+          { "heure": "08h30-10h30", "module": "ANGLAIS", "professeur": "JALAL", "salle": "LABO2" },
+          { "heure": "10h30-13h00", "module": "ANGLAIS", "professeur": "JALAL", "salle": "LABO2" },
+          { "heure": "13h30-16H00", "module": "Approche agile", "professeur": "HAQAY", "salle": "TEAM" },
+          { "heure": "16h00-18h30", "module": "Approche agile", "professeur": "HAQAY", "salle": "TEAM" }
+        ],
+        "mercredi": [
+          { "heure": "08h30-10h30", "module": "Projet Synthèse", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "10h30-13h00", "module": "Projet Synthèse", "professeur": "EL HAKIKI", "salle": "SP6" },
+          { "heure": "13h30-16H00", "module": "Culture entrepreneuriale", "professeur": "ZERRARI", "salle": "SC7" },
+          { "heure": "16h00-18h30", "module": "Culture entrepreneuriale", "professeur": "ZERRARI", "salle": "SC7" }
+        ],
+        "jeudi": [
+          { "heure": "08h30-10h30", "module": "Workshop IA", "professeur": "HAQAY", "salle": "COWORKING" },
+          { "heure": "10h30-13h00", "module": "Workshop IA", "professeur": "HAQAY", "salle": "COWORKING" },
+          { "heure": "13h30-16H00", "module": "Cloud native", "professeur": "KODDAM", "salle": "SP4" },
+          { "heure": "16h00-18h30", "module": "Cloud native", "professeur": "KODDAM", "salle": "SP4" }
+        ],
+        "vendredi": [
+          { "heure": "08h30-10h30", "module": "Cloud native", "professeur": "BRINSI", "salle": "SP1" },
+          { "heure": "10h30-13h00", "module": "Cloud native", "professeur": "BRINSI", "salle": "SP1" }
+        ]
+      }
+    },
+    "DEV": {
+      "NTIC2-DEV101": {
+        "lundi": [
+          { "heure": "08h30-10h30", "module": "Programmation JS", "professeur": "EL MADANI", "salle": "SP1" },
+          { "heure": "10h30-13h00", "module": "Programmation JS", "professeur": "EL MADANI", "salle": "SP1" },
+          { "heure": "13h30-16H00", "module": "PIE-1", "professeur": "ZERRARI", "salle": "SC7" },
+          { "heure": "16h00-18h30", "module": "Algorithmique", "professeur": "NACHITE", "salle": "SP5" }
+        ],
+        "mardi": [
+          { "heure": "08h30-10h30", "module": "Manipulation BD", "professeur": "EL MADANI", "salle": "SP1" },
+          { "heure": "10h30-13h00", "module": "Manipulation BD", "professeur": "EL MADANI", "salle": "SP1" },
+          { "heure": "13h30-16H00", "module": "Programmation JS", "professeur": "EL MADANI", "salle": "TEAM" },
+          { "heure": "16h00-18h30", "module": "Programmation JS", "professeur": "EL MADANI", "salle": "TEAM" }
+        ]
+      }
+    }
+  },
+  "efm_regional": {
+    "region": "Grand Casablanca-Settat",
+    "1A": {
+      "filières": {
+        "Développement Digital": [
+          { "module": "Sites Web statiques", "date": "16/01/2026", "time": "10:30-13:00" },
+          { "module": "Programmation JavaScript", "date": "A venir", "time": "" }
+        ],
+        "Infrastructure Digitale": [
+          { "module": "Conception réseau", "date": "16/02/2026", "time": "08:30-11:00" },
+          { "module": "Système d'exploitation", "date": "13/02/2026", "time": "10:30-13:00" }
+        ],
+        "Gestion des Entreprises": [
+          { "module": "Management", "date": "19/01/2026", "time": "10:30-13:00" },
+          { "module": "Comptabilité générale 1", "date": "16/02/2026", "time": "14:30-17:00" }
+        ],
+        "Technicien Météorologie": [
+          { "module": "Physique", "date": "09/02/2026", "time": "16:30-18:30" },
+          { "module": "Observation météo", "date": "15/01/2026", "time": "10:30-13:00" }
+        ]
+      }
+    },
+    "2A": {
+      "filières": {
+        "Développement Web Full Stack": [
+          { "module": "Approche agile", "date": "22/01/2026", "time": "14:30-17:00" },
+          { "module": "Développement front-end", "date": "19/01/2026", "time": "14:30-17:00" }
+        ],
+        "Infrastructure Systèmes et Réseaux": [
+          { "module": "Infras réseaux", "date": "21/01/2026", "time": "10:30-13:00" },
+          { "module": "Windows", "date": "11/02/2026", "time": "08:30-11:00" }
+        ],
+        "Comptabilité et Finance": [
+          { "module": "Contrôle de gestion", "date": "12/02/2026", "time": "10:30-13:00" }
+        ],
+        "Commerce et Marketing": [
+          { "module": "Vente et négociation", "date": "10/02/2026", "time": "16:00-18:30" }
+        ],
+        "Technicien Météorologie": [
+          { "module": "Observation II", "date": "19/01/2026", "time": "14:30-17:00" },
+          { "module": "Météo Marine", "date": "19/01/2026", "time": "08:30-11:00" }
+        ]
+      }
+    },
+    "3A": {
+      "filières": {
+        "Comptabilité et Finance": [
+          { "module": "Audit Comptable", "date": "22/12/2025", "time": "08:30-11:00" }
+        ],
+        "Commerce et Marketing": [
+          { "module": "Commerce International", "date": "26/12/2025", "time": "08:30-11:00" }
+        ]
+      }
+    }
+  },
+  "internship_stage": {
+    "3ème année": {
+      "period": "Du 04 Décembre 2023",
+      "duration": "8 semaines minimum",
+      "groups": ["GE301", "DEV301", "ID301", "FS301"]
+    }
+  },
+  "parrains": {
+    "1ère année": {
+      "filières": {
+        "Développement Digital": {
+          "DEV101": "M EL MADANI",
+          "DEV102": "M EL MADANI",
+          "DEV103": "Mme ESSOUFIANI",
+          "DEV104": "Mme ESSOUFIANI",
+          "DEV105": "Mme ASCOUR",
+          "DEV106": "Mme ASCOUR"
+        },
+        "Infrastructure Digitale": {
+          "ID101": "M NOUWAFFAK",
+          "ID102": "Mme KABBADJ",
+          "ID103": "Mme SQUITA"
+        },
+        "Gestion Entreprise": {
+          "GE101": "M ZIGHIGHI",
+          "GE102": "Mme JANNAT",
+          "GE103": "Mme MSITEF",
+          "GE104": "Mme MSFTAH",
+          "GE106": "Mme SNMY",
+          "GE107": "Mme EL BAYED SAKALI"
+        },
+        "TSH": {
+          "TSH101": "M BOUBEKRI / M EL HAMLY",
+          "TSH102": "M BOUBEKRI / M EL HAMLY"
+        }
+      }
+    },
+    "2ème année": {
+      "filières": {
+        "Full Stack": {
+          "DEVOWF3201": "M H EL HAKIKI",
+          "DEVOWF3202": "M H EL HAKIKI",
+          "DEVOWF3203": "M H EL HAKIKI",
+          "DEVOWF3204": "M H EL HAKIKI",
+          "DEVOWF3205": "Mme EL ALAMI",
+          "DEVOWF3206": "Mme EL ALAMI",
+          "DEVOWF3207": "Mme EL ALAMI"
+        },
+        "Infrastructure": {
+          "IDOSR201": "Mme ABIDAR",
+          "IDOSR202": "Mme KABBADJ",
+          "IDOSR203": "Mme SQUITA",
+          "IDOSR204": "Mme ABIDAR",
+          "IDOSR205": "Mme ABIDAR"
+        },
+        "Gestion Entreprise (Finance)": {
+          "GEOCF201": "M ALAQUI SOULIMANI",
+          "GEOCF202": "Mme EL BAYED SAKALI",
+          "GEOCF203": "Mme EL BAYED SAKALI",
+          "GEOCF204": "Mme JANNAT",
+          "GEOCF205": "M ZIGHIGHI"
+        },
+        "Gestion Entreprise (Marketing)": {
+          "GEOCM201": "Mme MSITEF",
+          "GEOCM202": "Mme MABROUK",
+          "GEOCM203": "Mme MABROUK / Mme TANTAMAQUY"
+        },
+        "TSH": {
+          "TSH201": "M BOUBEKRI / M EL HAMLY",
+          "TSH202": "M BOUBEKRI / M EL HAMLY"
+        }
+      }
+    },
+    "3ème année": {
+      "filières": {
+        "Gestion Entreprise (Finance)": {
+          "GEOCF301": "Mme EL BAYED SAKALI",
+          "GEOCF302": "M ALAQUI SOULIMANI",
+          "GEOCF303": "Mme EL BAYED SAKALI"
+        },
+        "Gestion Entreprise (Marketing)": {
+          "GEOCM301": "Mme MSITEF",
+          "GEOCM302": "Mme MSITEF"
+        }
+      }
+    }
+  },
+  "teacher_absences": [
+    { "name": "Mme KABBADJ", "period": "Du 23/09 au 26/09/2024", "return_date": "27/09/2024" },
+    { "name": "Mme FALAH", "period": "Du 30/09 au 04/10/2024", "return_date": "05/10/2024" },
+    { "name": "M ZERRARI", "period": "Du 30/09 au 04/10/2024", "return_date": "05/10/2024" },
+    { "name": "Mme SNINY", "period": "Du 30/09 au 04/10/2024", "return_date": "05/10/2024" },
+    { "name": "Mme RAHIB", "period": "Du 30/09 au 04/10/2024", "return_date": "05/10/2024" }
+  ]
+}

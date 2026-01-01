@@ -1,3 +1,39 @@
+import logging
+from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
+
+
+class ChatbotService:
+    """Legacy chatbot service has been removed. Use NTIC2 service instead."""
+
+    @staticmethod
+    def start_conversation(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def send_message(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def get_conversation_history(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def generate_response(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def detect_intent(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def close_conversation(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
+
+    @staticmethod
+    def set_satisfaction_score(*args, **kwargs):
+        raise HTTPException(status_code=410, detail="Legacy chatbot removed. Use NTIC2 service at http://localhost:8080.")
 import json
 from datetime import datetime
 from typing import Optional, Dict, Any, Iterator

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Bell, Bot, ChartBar, Shield, Users } from 'lucide-react';
+import { ArrowRight, Bell, ChartBar, Shield, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,6 @@ export default function HomePage() {
             <Feature label="Multi-rôles" Icon={Users} />
             <Feature label="Notifications smart" Icon={Bell} />
             <Feature label="Rapports PDF/Excel" Icon={ArrowRight} />
-            <Feature label="Chatbot IA" Icon={Bot} />
           </div>
           <div className="flex gap-3">
             <Link href="/auth/login" className="btn-primary">

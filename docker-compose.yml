@@ -129,6 +129,69 @@ services:
       - smartpresence_network
     restart: unless-stopped
 
+  # NTIC2 AI Agent - Backend (FastAPI) + Frontend (Vite/Nginx)
+  ntic2-postgres:
+    image: postgres:15
+    container_name: ntic2_postgres
+    environment:
+      POSTGRES_DB: ntic2
+      POSTGRES_USER: ntic
+      POSTGRES_PASSWORD: ntic
+    ports:
+      - "5434:5432"  # avoid conflict with main postgres
+    volumes:
+      - ntic2_pgdata:/var/lib/postgresql/data
+      - ./ntic2_ai_agent_production/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smartpresence_network
+
+  ntic2-ollama:
+    image: ollama/ollama:latest
+    container_name: ntic2_ollama
+    ports:
+      - target: 11434
+        published: ${NTIC2_OLLAMA_PORT:-11435}
+        protocol: tcp
+    volumes:
+      - ntic2_ollama_data:/root/.ollama
+    networks:
+      - smartpresence_network
+
+  ntic2-backend:
+    build:
+      context: ./ntic2_ai_agent_production/backend
+      dockerfile: Dockerfile
+    container_name: ntic2_backend
+    env_file:
+      - ./ntic2_ai_agent_production/.env
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      OLLAMA_BASE_URL: http://ntic2-ollama:11434
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      HF_API_KEY: ${HF_API_KEY:-}
+    depends_on:
+      - ntic2-postgres
+      - ntic2-ollama
+    volumes:
+      - ./ntic2_ai_agent_production/backend:/app
+      - ntic2_chroma_data:/app/chroma_db
+    ports:
+      - "5000:5000"
+    networks:
+      - smartpresence_network
+
+  ntic2-frontend:
+    build:
+      context: ./ntic2_ai_agent_production/frontend
+      dockerfile: Dockerfile
+    container_name: ntic2_frontend
+    depends_on:
+      - ntic2-backend
+    ports:
+      - "8080:80"
+    networks:
+      - smartpresence_network
+
 networks:
   smartpresence_network:
     driver: bridge
@@ -138,3 +201,6 @@ volumes:
   redis_data:
   upload_data:
   chroma_data:
+  ntic2_pgdata:
+  ntic2_ollama_data:
+  ntic2_chroma_data:
