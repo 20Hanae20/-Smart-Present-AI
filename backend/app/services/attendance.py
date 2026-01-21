@@ -317,3 +317,43 @@ class AttendanceService:
         if student.total_absence_hours >= 8 and not student.alertsent:
             # N8N Workflow 3 will pick this up for WhatsApp notification
             pass  # Keep alertsent=False so N8N can detect and send WhatsApp
+
+    @staticmethod
+    def _log_absence_for_n8n_webhook(db: Session, student_id: int, session_id: int):
+        """Log absence record for N8N automation with webhook trigger"""
+        try:
+            from app.models.absence import Absence
+            from app.models.student import Student
+            from app.services.n8n_webhooks import trigger_absence_webhook
+            
+            # Get student and session info
+            student = db.query(Student).filter(Student.id == student_id).first()
+            if not student:
+                return
+                
+            # Create absence record
+            absence = Absence(
+                studentid=student_id,
+                date=datetime.utcnow(),
+                hours=2.0,  # Default session duration
+                notified=False
+            )
+            db.add(absence)
+            db.flush()  # Get the ID
+            
+            # Trigger N8N webhook asynchronously
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            loop.create_task(trigger_absence_webhook(absence, student, db))
+            
+            logger.info(f"Logged absence for student {student_id} and triggered N8N webhook")
+            
+        except Exception as e:
+            logger.error(f"Failed to log absence for N8N: {e}")
+            # Don't raise - this is secondary functionality
+            pass

@@ -1,0 +1,384 @@
+{
+  "workflows": {
+    "absence_email_workflow": {
+      "name": "Email Parents on Absence",
+      "description": "Automatically emails parents when student is marked absent",
+      "trigger": {
+        "type": "webhook",
+        "path": "/absence-notification"
+      },
+      "nodes": [
+        {
+          "id": "webhook1",
+          "name": "Absence Webhook",
+          "type": "webhook",
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "absence-notification",
+            "responseMode": "onReceived"
+          }
+        },
+        {
+          "id": "if1",
+          "name": "Check Notified",
+          "type": "if",
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.data.notified }}",
+                  "operation": "equal"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "email1",
+          "name": "Send Email to Parent",
+          "type": "emailSend",
+          "parameters": {
+            "fromEmail": "smartpresence@ista.ma",
+            "toEmail": "={{ $json.data.parent_email }}",
+            "subject": "Absence Notification - {{ $json.data.student_name }}",
+            "text": "Cher parent/La chère parente,\\n\\nNous vous informons que votre enfant {{ $json.data.student_name }} a été marqué(e) absent(e) le {{ $json.data.absence_date }} pour une durée de {{ $json.data.absence_hours }} heures.\\n\\nVeuillez nous contacter si vous avez des questions.\\n\\nCordialement,\\nL'équipe ISTA"
+          }
+        },
+        {
+          "id": "postgres1",
+          "name": "Update Notified Status",
+          "type": "postgres",
+          "parameters": {
+            "operation": "update",
+            "table": "absence",
+            "updateKey": "id",
+            "updateKeyValue": "={{ $json.data.absence_id }}",
+            "updateFields": {
+              "notified": true
+            }
+          }
+        }
+      ],
+      "connections": {
+        "webhook1": {
+          "main": [["if1"]]
+        },
+        "if1": {
+          "main": [["email1"], []]
+        },
+        "email1": {
+          "main": [["postgres1"]]
+        }
+      }
+    },
+    "exam_reminder_workflow": {
+      "name": "Exam Reminder 72h Before",
+      "description": "Sends exam reminders 72 hours before scheduled exams",
+      "trigger": {
+        "type": "cron",
+        "cronExpression": "0 9 * * *"
+      },
+      "nodes": [
+        {
+          "id": "postgres1",
+          "name": "Get Upcoming Exams",
+          "type": "postgres",
+          "parameters": {
+            "operation": "select",
+            "table": "controles",
+            "where": {
+              "notified": false,
+              "date_controle": {
+                "operation": "between",
+                "value1": "={{ $now.plus({ days: 3 }) }}",
+                "value2": "={{ $now.plus({ days: 4 }) }}"
+              }
+            }
+          }
+        },
+        {
+          "id": "postgres2",
+          "name": "Get Students for Exam",
+          "type": "postgres",
+          "parameters": {
+            "operation": "select",
+            "table": "students",
+            "where": {
+              "class": "={{ $json.module }}"
+            }
+          }
+        },
+        {
+          "id": "email1",
+          "name": "Send Exam Reminder",
+          "type": "emailSend",
+          "parameters": {
+            "fromEmail": "smartpresence@ista.ma",
+            "toEmail": "={{ $json.email }}",
+            "subject": "Rappel d'Examen - {{ $json.module }}",
+            "text": "Cher étudiant/Chère étudiante,\\n\\nCeci est un rappel que vous avez un examen de {{ $json.module }} prévu dans 3 jours ({{ $json.date_controle }}).\\n\\nType: {{ $json.type }}\\n\\nMerci de bien vous préparer.\\n\\nBonne chance!\\nL'équipe ISTA"
+          }
+        },
+        {
+          "id": "postgres3",
+          "name": "Update Exam Notified",
+          "type": "postgres",
+          "parameters": {
+            "operation": "update",
+            "table": "controles",
+            "updateKey": "id",
+            "updateKeyValue": "={{ $json.id }}",
+            "updateFields": {
+              "notified": true
+            }
+          }
+        }
+      ]
+    },
+    "whatsapp_alert_workflow": {
+      "name": "WhatsApp Alert >8h Absences",
+      "description": "Sends WhatsApp alerts when student exceeds 8 hours of absences",
+      "trigger": {
+        "type": "webhook",
+        "path": "/whatsapp-alert"
+      },
+      "nodes": [
+        {
+          "id": "webhook1",
+          "name": "WhatsApp Alert Webhook",
+          "type": "webhook",
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "whatsapp-alert"
+          }
+        },
+        {
+          "id": "if1",
+          "name": "Check Alert Sent",
+          "type": "if",
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.data.alert_sent }}",
+                  "operation": "equal"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "whatsapp1",
+          "name": "Send WhatsApp Message",
+          "type": "httpRequest",
+          "parameters": {
+            "url": "https://graph.facebook.com/v18.0/PHONE_NUMBER_ID/messages",
+            "method": "POST",
+            "headers": {
+              "Authorization": "Bearer {{ $credentials.whatsappToken }}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "messaging_product": "whatsapp",
+              "to": "={{ $json.data.parent_phone }}",
+              "type": "template",
+              "template": {
+                "name": "absence_alert",
+                "language": {
+                  "code": "fr"
+                },
+                "components": [
+                  {
+                    "type": "body",
+                    "parameters": [
+                      {
+                        "type": "text",
+                        "text": "{{ $json.data.student_name }}"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{{ $json.data.total_absence_hours }}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "postgres1",
+          "name": "Update Alert Sent",
+          "type": "postgres",
+          "parameters": {
+            "operation": "update",
+            "table": "students",
+            "updateKey": "id",
+            "updateKeyValue": "={{ $json.data.student_id }}",
+            "updateFields": {
+              "alertsent": true
+            }
+          }
+        }
+      ]
+    },
+    "ai_scoring_workflow": {
+      "name": "AI Attendance Scoring",
+      "description": "Uses AI to calculate attendance scores and justifications",
+      "trigger": {
+        "type": "webhook",
+        "path": "/ai-scoring"
+      },
+      "nodes": [
+        {
+          "id": "webhook1",
+          "name": "AI Scoring Webhook",
+          "type": "webhook",
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "ai-scoring"
+          }
+        },
+        {
+          "id": "openai1",
+          "name": "Calculate AI Score",
+          "type": "openai",
+          "parameters": {
+            "model": "gpt-4",
+            "prompt": "En tant qu'expert en éducation, analysez les données d'absence suivantes et calculez un score de présence (0-100) et fournissez une justification:\\n\\nDonnées: {{ JSON.stringify($json.data.absence_data) }}\\n\\nRépondez uniquement au format JSON:\\n{\\n  \"score\": 0-100,\\n  \"justification\": \"explication détaillée\"\\n}"
+          }
+        },
+        {
+          "id": "code1",
+          "name": "Parse AI Response",
+          "type": "code",
+          "parameters": {
+            "code": "// Parse AI response\nconst aiResponse = JSON.parse($input.first().json.text);\nreturn [{\n  json: {\n    student_id: $input.first().json.data.student_id,\n    score: aiResponse.score,\n    justification: aiResponse.justification\n  }\n}];"
+          }
+        },
+        {
+          "id": "postgres1",
+          "name": "Update Student Score",
+          "type": "postgres",
+          "parameters": {
+            "operation": "update",
+            "table": "students",
+            "updateKey": "id",
+            "updateKeyValue": "={{ $json.student_id }}",
+            "updateFields": {
+              "pourcentage": "={{ $json.score }}",
+              "justification": "={{ $json.justification }}"
+            }
+          }
+        }
+      ]
+    },
+    "daily_report_workflow": {
+      "name": "Daily PDF Reports",
+      "description": "Generates and sends daily absence reports by class",
+      "trigger": {
+        "type": "cron",
+        "cronExpression": "0 18 * * *"
+      },
+      "nodes": [
+        {
+          "id": "postgres1",
+          "name": "Get Today's Absences",
+          "type": "postgres",
+          "parameters": {
+            "operation": "select",
+            "table": "absence",
+            "where": {
+              "date": {
+                "operation": "between",
+                "value1": "={{ $now.startOf('day') }}",
+                "value2": "={{ $now.endOf('day') }}"
+              }
+            },
+            "join": {
+              "table": "students",
+              "on": "absence.studentid = students.id"
+            }
+          }
+        },
+        {
+          "id": "code1",
+          "name": "Group by Class",
+          "type": "code",
+          "parameters": {
+            "code": "// Group absences by class\nconst absences = $input.all();\nconst grouped = {};\n\nabsences.forEach(item => {\n  const class_name = item.json.class;\n  if (!grouped[class_name]) {\n    grouped[class_name] = [];\n  }\n  grouped[class_name].push({\n    student_name: `${item.json.firstname} ${item.json.lastname}`,\n    hours: item.json.hours,\n    date: item.json.date\n  });\n});\n\nreturn Object.keys(grouped).map(className => ({\n  json: {\n    class: className,\n    date: $now.format('YYYY-MM-DD'),\n    absences: grouped[className]\n  }\n}));"
+          }
+        },
+        {
+          "id": "html1",
+          "name": "Generate HTML Report",
+          "type": "code",
+          "parameters": {
+            "code": "// Generate HTML for PDF\nconst data = $input.first().json;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>Rapport d'Absences - ${data.class}</title>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 20px; }\n    h1 { color: #333; }\n    table { border-collapse: collapse; width: 100%; }\n    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n    th { background-color: #f2f2f2; }\n  </style>\n</head>\n<body>\n  <h1>Rapport d'Absences Quotidien</h1>\n  <p><strong>Classe:</strong> ${data.class}</p>\n  <p><strong>Date:</strong> ${data.date}</p>\n  <p><strong>Total d'absences:</strong> ${data.absences.length}</p>\n  \n  <table>\n    <thead>\n      <tr>\n        <th>Étudiant</th>\n        <th>Heures d'absence</th>\n        <th>Date</th>\n      </tr>\n    </thead>\n    <tbody>\n      ${data.absences.map(abs => `\n        <tr>\n          <td>${abs.student_name}</td>\n          <td>${abs.hours}</td>\n          <td>${abs.date}</td>\n        </tr>\n      `).join('')}\n    </tbody>\n  </table>\n</body>\n</html>\n`;\n\nreturn [{ json: { html, ...data } }];"
+          }
+        },
+        {
+          "id": "gotenberg1",
+          "name": "Convert to PDF",
+          "type": "httpRequest",
+          "parameters": {
+            "url": "http://gotenberg:3000/forms/chromium/convert/html",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "multipart/form-data"
+            },
+            "formData": {
+              "html": "={{ $json.html }}",
+              "fileName": "rapport_absences_{{ $json.class }}_{{ $json.date }}.pdf"
+            }
+          }
+        },
+        {
+          "id": "http1",
+          "name": "Upload to SmartPresence",
+          "type": "httpRequest",
+          "parameters": {
+            "url": "http://backend:8000/api/upload",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "multipart/form-data"
+            },
+            "formData": {
+              "file": "={{ $binary.data }}",
+              "class": "={{ $json.class }}",
+              "date": "={{ $json.date }}"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "database": {
+      "host": "postgres",
+      "port": 5432,
+      "database": "smartpresence",
+      "user": "postgres",
+      "password": "{{ $credentials.postgresPassword }}"
+    },
+    "email": {
+      "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "{{ $credentials.emailUser }}",
+          "pass": "{{ $credentials.emailPassword }}"
+        }
+      }
+    },
+    "webhooks": {
+      "baseUrl": "http://localhost:5678",
+      "paths": {
+        "absence": "/webhook/absence-notification",
+        "whatsapp": "/webhook/whatsapp-alert",
+        "ai_scoring": "/webhook/ai-scoring"
+      }
+    }
+  }
+}
