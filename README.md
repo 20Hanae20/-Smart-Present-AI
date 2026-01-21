@@ -268,7 +268,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🆘 Support
 
 For support and questions:
-- 📧 Email: support@smartpresence.ai
+- 📧 Email: hanaechaib3@gmail.com
 - 📖 Documentation: Check `/docs` in the application
 - 🐛 Issues: Create an issue on GitHub
 
@@ -334,7 +334,4 @@ npm run dev
 - Docker is the preferred way to run; local mode expects PostgreSQL + Redis available.
 - See `docs/` and `scripts/README.md` for detailed operations and deployment.
 - Do **not** version or pull generated artifacts: `chroma_db/**`, `backend/chroma_db/**`, `*.sqlite3`, `backend/storage/faces/**`, `ntic2_source/secrets/**`, other secrets. Regenerate locally by running migrations/seeds and the RAG ingestion script: `docker-compose exec backend python backend/scripts/ingest_ista_knowledge.py` (or equivalent seed). Keep secrets in `.env` files only.
-=======
-# -Smart-Present-AI
- Smart-Present-AI
->>>>>>> 0cb91cb0483665f2a00a46d704b4fa38bc544c2e
+
